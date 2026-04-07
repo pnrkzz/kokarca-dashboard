@@ -5,6 +5,8 @@ import ast
 import plotly.express as px
 import plotly.graph_objects as go
 from textwrap import dedent
+import matplotlib.pyplot as plt
+import geopandas as gpd
 
 # ==================================================
 # PAGE CONFIG
