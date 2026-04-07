@@ -108,7 +108,7 @@ html, body, [class*="css"] {
 # ==================================================
 # CONFIG
 # ==================================================
-CSV_PATH = "data/data.csv"
+CSV_PATH = r"C:\Users\depoc\kokarca_project\data_processed\MASTER_CORPUS_FINAL_ANALYSIS_READY.csv"
 DEFAULT_START_YEAR = 2016
 DEFAULT_END_YEAR = 2025
 
@@ -406,7 +406,7 @@ Ana odak; yayılım, zaman, mekân, müdahale, ürün etkisi ve kaynak örüntü
 # ==================================================
 # TABS
 # ==================================================
-tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
+tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([
     "Genel Bakış",
     "Yayılım Analizi",
     "Kaynak Explorer",
@@ -414,8 +414,8 @@ tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
     "Müdahale & İklim",
     "STC",
     "Metodoloji",
+    "Etki Haritası",
 ])
-
 # ==================================================
 # TAB 1 - GENEL BAKIŞ
 # ==================================================
@@ -894,3 +894,100 @@ Gösterilen mekânsal-zamansal örüntüler, doğrudan saha gözlemi değil; met
 - Kaynak yoğunluğu, gerçek biyolojik yoğunluğu birebir temsil etmeyebilir.
 """
         )
+
+# ==================================================
+# TAB 8 - Müdahale Sonrası Yayılım Değişimi
+# ==================================================
+
+with tab8:
+    st.markdown('<div class="section-title">Fındık: Müdahale Sonrası Yayılım Değişimi</div>', unsafe_allow_html=True)
+    st.info("Bu harita, sadece fındık içeren kayıtlarda müdahale öncesi ve sonrası yayılım değişimini göstermektedir.")
+
+    import geopandas as gpd
+    import matplotlib.pyplot as plt
+    import pandas as pd
+
+    try:
+        # =========================
+        # 1. HARİTA DOSYASI
+        # =========================
+        turkey = gpd.read_file("data/turkey.geojson")
+
+        # =========================
+        # 2. ETKİ VERİSİ
+        # =========================
+        map_df = impact_pivot.reset_index()[["location_clean", "change"]].copy()
+
+        # =========================
+        # 3. İSİM NORMALİZASYONU
+        # =========================
+        def normalize_name(s):
+            if pd.isna(s):
+                return None
+
+            s = str(s).strip()
+
+            fixes = {
+                "IÄdir": "Iğdır",
+                "Sirnak": "Şırnak",
+                "Corum": "Çorum",
+                "Kirsehir": "Kırşehir",
+                "Kutahya": "Kütahya",
+                "Mugla": "Muğla",
+                "Sanliurfa": "Şanlıurfa",
+                "Usak": "Uşak",
+                "Nevsehir": "Nevşehir",
+                "Igdir": "Iğdır",
+                "Izmir": "İzmir",
+                "Istanbul": "İstanbul"
+            }
+
+            return fixes.get(s, s)
+
+        turkey["name_clean"] = turkey["name"].apply(normalize_name)
+        map_df["location_clean2"] = map_df["location_clean"].apply(normalize_name)
+
+        # =========================
+        # 4. JOIN
+        # =========================
+        merged = turkey.merge(
+            map_df,
+            left_on="name_clean",
+            right_on="location_clean2",
+            how="left"
+        )
+
+        # =========================
+        # 5. HARİTA
+        # =========================
+        fig, ax = plt.subplots(1, 1, figsize=(10, 8))
+
+        merged.plot(
+            column="change",
+            cmap="RdYlGn_r",
+            linewidth=0.5,
+            edgecolor="black",
+            legend=True,
+            ax=ax,
+            missing_kwds={"color": "lightgrey", "label": "Veri yok"}
+        )
+
+        ax.set_title("Fındık: Müdahale Sonrası Yayılım Değişimi")
+        ax.axis("off")
+
+        st.pyplot(fig)
+
+        # =========================
+        # 6. AÇIKLAMA
+        # =========================
+        st.markdown("""
+        **Yorum:**
+        - 🟢 Yeşil → yayılım azalmış (müdahale etkili olabilir)  
+        - 🔴 Kırmızı → yayılım artmış (müdahale yetersiz)  
+        - ⚪ Gri → veri yok  
+
+        Bu harita, müdahale etkinliğinin mekânsal olarak homojen olmadığını göstermektedir.
+        """)
+
+    except Exception as e:
+        st.error(f"Harita yüklenemedi: {e}")
