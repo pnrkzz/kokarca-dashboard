@@ -5,8 +5,6 @@ import ast
 import plotly.express as px
 import plotly.graph_objects as go
 from textwrap import dedent
-import matplotlib.pyplot as plt
-import geopandas as gpd
 
 # ==================================================
 # PAGE CONFIG
@@ -903,28 +901,19 @@ with tab8:
     st.markdown('<div class="section-title">Fındık: Müdahale Sonrası Yayılım Değişimi</div>', unsafe_allow_html=True)
     st.info("Bu harita, sadece fındık içeren kayıtlarda müdahale öncesi ve sonrası yayılım değişimini göstermektedir.")
 
-    import geopandas as gpd
-    import matplotlib.pyplot as plt
-    import pandas as pd
-
     try:
-        # =========================
-        # 1. HARİTA DOSYASI
-        # =========================
-        turkey = gpd.read_file("data/turkey.geojson")
+        import json
 
-        # =========================
-        # 2. ETKİ VERİSİ
-        # =========================
+        # 1) geojson oku
+        with open("data/turkey.geojson", "r", encoding="utf-8") as f:
+            turkey_geojson = json.load(f)
+
+        # 2) etki verisi
         map_df = impact_pivot.reset_index()[["location_clean", "change"]].copy()
 
-        # =========================
-        # 3. İSİM NORMALİZASYONU
-        # =========================
         def normalize_name(s):
             if pd.isna(s):
                 return None
-
             s = str(s).strip()
 
             fixes = {
@@ -941,52 +930,45 @@ with tab8:
                 "Izmir": "İzmir",
                 "Istanbul": "İstanbul"
             }
-
             return fixes.get(s, s)
 
-        turkey["name_clean"] = turkey["name"].apply(normalize_name)
         map_df["location_clean2"] = map_df["location_clean"].apply(normalize_name)
 
-        # =========================
-        # 4. JOIN
-        # =========================
-        merged = turkey.merge(
+        # 3) geojson feature isimlerini temizle
+        for feature in turkey_geojson["features"]:
+            raw_name = feature["properties"].get("name", "")
+            feature["properties"]["name_clean"] = normalize_name(raw_name)
+
+        # 4) plotly choropleth
+        fig = px.choropleth(
             map_df,
-            left_on="name_clean",
-            right_on="location_clean2",
-            how="left"
+            geojson=turkey_geojson,
+            locations="location_clean2",
+            featureidkey="properties.name_clean",
+            color="change",
+            color_continuous_scale="RdYlGn_r",
+            title="Fındık: Müdahale Sonrası Yayılım Değişimi",
+            hover_name="location_clean2",
+            hover_data={"change": True, "location_clean2": False}
         )
 
-        # =========================
-        # 5. HARİTA
-        # =========================
-        fig, ax = plt.subplots(1, 1, figsize=(10, 8))
-
-        merged.plot(
-            column="change",
-            cmap="RdYlGn_r",
-            linewidth=0.5,
-            edgecolor="black",
-            legend=True,
-            ax=ax,
-            missing_kwds={"color": "lightgrey", "label": "Veri yok"}
+        fig.update_geos(
+            fitbounds="locations",
+            visible=False
         )
 
-        ax.set_title("Fındık: Müdahale Sonrası Yayılım Değişimi")
-        ax.axis("off")
+        fig.update_layout(
+            height=800,
+            margin=dict(l=10, r=10, t=60, b=10)
+        )
 
-        st.pyplot(fig)
+        st.plotly_chart(fig, use_container_width=True)
 
-        # =========================
-        # 6. AÇIKLAMA
-        # =========================
         st.markdown("""
         **Yorum:**
-        - 🟢 Yeşil → yayılım azalmış (müdahale etkili olabilir)  
-        - 🔴 Kırmızı → yayılım artmış (müdahale yetersiz)  
-        - ⚪ Gri → veri yok  
-
-        Bu harita, müdahale etkinliğinin mekânsal olarak homojen olmadığını göstermektedir.
+        - 🟢 Yeşil → yayılım azalmış  
+        - 🔴 Kırmızı → yayılım artmış  
+        - Bu görselleştirme, müdahale etkinliğinin mekânsal olarak homojen olmadığını göstermektedir.
         """)
 
     except Exception as e:
