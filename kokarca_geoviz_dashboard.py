@@ -106,7 +106,7 @@ html, body, [class*="css"] {
 # ==================================================
 # CONFIG
 # ==================================================
-CSV_PATH = r"C:\Users\depoc\kokarca_project\data_processed\MASTER_CORPUS_FINAL_ANALYSIS_READY.csv"
+CSV_PATH = "data/data.csv"
 DEFAULT_START_YEAR = 2016
 DEFAULT_END_YEAR = 2025
 
