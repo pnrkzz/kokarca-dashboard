@@ -1,0 +1,14 @@
+node_modules/
+dist/
+.venv/
+venv/
+__pycache__/
+.ipynb_checkpoints/
+.env
+.env.*
+!.env.example
+*.log
+*.bak*
+*.tsbuildinfo
+data_processed/
+backend/data/
